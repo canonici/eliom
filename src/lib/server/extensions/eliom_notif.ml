@@ -141,7 +141,7 @@ module Make (A : S) = struct
 
   let listen (key : A.key) = Lwt.async (fun () ->
     set_current_identity () >>= fun () ->
-    Eliom_reference.get identity_r >>= fun identity
+    Eliom_reference.get identity_r >>= fun identity ->
     I.add identity key;
     Lwt.return ()
   )
