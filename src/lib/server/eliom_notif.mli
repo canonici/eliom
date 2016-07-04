@@ -40,7 +40,6 @@ sig
       For example:
 
       let%client handle_notification some_stuff ev =
-         let (_, msgid) = ev in
          ...
 
       let%server something some_stuff =
