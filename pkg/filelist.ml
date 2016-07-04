@@ -26,6 +26,7 @@ let server = {
     "eliom_extension";
     "eliom_lib";
     "eliom_mkreg";
+    "eliom_notif";
     "eliom_parameter";
     "eliom_react";
     "eliom_shared";
@@ -132,8 +133,7 @@ let server_ext = {
     "atom_feed";
     "eliom_atom";
     "eliom_openid";
-    "eliom_s2s";
-    "eliom_notif"
+    "eliom_s2s"
   ];
   internal = []
 }
