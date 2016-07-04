@@ -1,4 +1,5 @@
 open Lwt
+open Lwt_react
 
 module type S = sig
   type identity
