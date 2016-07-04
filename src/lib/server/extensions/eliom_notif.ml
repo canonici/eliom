@@ -1,7 +1,5 @@
 open Lwt
 
-module React = Lwt_react
-
 module type S = sig
   type identity
   type key
