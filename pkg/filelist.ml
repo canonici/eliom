@@ -132,7 +132,8 @@ let server_ext = {
     "atom_feed";
     "eliom_atom";
     "eliom_openid";
-    "eliom_s2s"];
+    "eliom_s2s";
+    "eliom_notif"];
   internal = []
 }
 
