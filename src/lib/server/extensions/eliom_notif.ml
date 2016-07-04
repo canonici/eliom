@@ -1,3 +1,4 @@
+open Lwt
 
 module type S = sig
   type identity
@@ -42,7 +43,7 @@ module Make (A : S) = struct
     let lock = Lwt_mutex.create ()
 
     let async_locked f = Lwt.async (fun () ->
-      let%lwt () = Lwt_mutex.lock lock in
+      Lwt_mutex.lock lock >>= fun () ->
       f ();
       Lwt.return (Lwt_mutex.unlock lock)
     )
@@ -130,8 +131,8 @@ module Make (A : S) = struct
        because the table resourceid -> (identity, notif_ev) option
        is weak.
     *)
-    let%lwt notif = Eliom_reference.get notif_e in
-    let%lwt () = Eliom_reference.set identity_r (Some (identity, notif)) in
+    Eliom_reference.get notif_e >>= fun notif ->
+    Eliom_reference.set identity_r (Some (identity, notif)) >>= fun () ->
     Lwt.return ()
 
   let set_current_identity () =
@@ -139,26 +140,25 @@ module Make (A : S) = struct
     set_identity identity
 
   let listen (key : A.key) = Lwt.async (fun () ->
-    let%lwt ()       = set_current_identity () in
-    let%lwt identity = Eliom_reference.get identity_r in
+    set_current_identity () >>= fun () ->
+    Eliom_reference.get identity_r >>= fun identity
     I.add identity key;
     Lwt.return ()
   )
 
   let unlisten (id : A.key) = Lwt.async (fun () ->
-    let%lwt identity = Eliom_reference.get identity_r in
+    Eliom_reference.get identity_r >>= fun identity ->
     I.remove identity id;
     Lwt.return ()
   )
 
   let notify ?(notforme = false) key content_gen =
     let f = fun (identity, ((_, _, send_e) as notif)) ->
-      let%lwt notif_e = Eliom_reference.get notif_e in
+      Eliom_reference.get notif_e >>= fun notif_e ->
       if notforme && notif == notif_e then
 	Lwt.return ()
       else
-        let%lwt content = content_gen identity in
-        match content with
+        content_gen identity >>= fun content -> match content with
         | Some content -> send_e (key, content); Lwt.return ()
         | None -> Lwt.return ()
     in
