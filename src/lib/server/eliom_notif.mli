@@ -21,11 +21,11 @@ sig
   (** Call [notify key f] to send a notification to all clients currently
       listening on data referenced by [key].
       The notification is build using function [f],
-      that takes the userid as parameter, if a user is connected for this
-      client process.
+      that takes the identity of the client as parameter,
+      if a client is identified for this client process.
 
-      If you do not want to send the notification for this user,
-      for example because he is not allowed to see this data,
+      If you do not want to send the notification for this identity,
+      for example because it is not allowed to see this data,
       make function [f] return [None].
 
       If [~notforme] is [true], notification will not be sent to the tab
@@ -38,16 +38,22 @@ sig
   (** Returns the client react event. Map a function on this event to react
       to notifications from the server.
       For example:
-[{server{
-  let _ = Eba_session.on_start_process
-    (fun () ->
-       ignore {unit{ ignore (React.E.map handle_notif %(N.client_ev ())) }};
-       Lwt.return ()
-     )
-}}
-]
 
+      let%client handle_notification some_stuff ev =
+         let (_, msgid) = ev in
+         ...
+
+      let%server something some_stuff =
+         ignore
+           [%client
+              (ignore (React.E.map
+		        (handle_notification ~%some_stuff)
+		        ~%(Notif_module.client_ev ())
+	      ) : unit)
+           ]
+  
   *)
+
   val client_ev : unit -> (A.key * A.notification) Eliom_react.Down.t
 
   val unlisten_wrapper : key:A.key -> handler:'a  -> 'a

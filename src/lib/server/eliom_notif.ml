@@ -123,7 +123,7 @@ module Make (A : S) = struct
              ~scope:Eliom_common.default_process_scope e in
          (client_ev, e, send_e)
          (* I don't really need e, but I need to keep a reference on it during
-            the session to avoid it beeing garbage collected. *))
+            the session to avoid it being garbage collected. *))
 
   let set_identity identity =
     (* For each tab connected to the app,
