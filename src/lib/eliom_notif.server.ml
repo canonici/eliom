@@ -16,7 +16,6 @@ module Make (A : S) = struct
 
   type notification_react =
     notification_data Eliom_react.Down.t
-    * notification_data React.event
     * (?step: React.step -> notification_data -> unit)
 
   module Notif_hashtbl = Hashtbl.Make(struct
@@ -104,9 +103,10 @@ module Make (A : S) = struct
       )
   end
 
-  let identity_r = Eliom_reference.eref
-    ~scope:Eliom_common.default_process_scope
-    None
+  let identity_r : (A.identity * notification_react) option Eliom_reference.eref =
+    Eliom_reference.eref
+      ~scope:Eliom_common.default_process_scope
+      None
 
   (* notif_e consists in a server side react event,
      its client side counterpart,
@@ -121,9 +121,7 @@ module Make (A : S) = struct
                even if buffer size is not 1 :O *)
              ~size: 100 (*VVV ? *)
              ~scope:Eliom_common.default_process_scope e in
-         (client_ev, e, send_e)
-         (* I don't really need e, but I need to keep a reference on it during
-            the session to avoid it being garbage collected. *))
+         (client_ev, send_e))
 
   let set_identity identity =
     (* For each tab connected to the app,
@@ -153,7 +151,7 @@ module Make (A : S) = struct
   )
 
   let notify ?(notforme = false) key content_gen =
-    let f = fun (identity, ((_, _, send_e) as notif)) ->
+    let f = fun (identity, ((_, send_e) as notif)) ->
       Eliom_reference.get notif_e >>= fun notif_e ->
       if notforme && notif == notif_e then
 	Lwt.return ()
@@ -166,15 +164,7 @@ module Make (A : S) = struct
     I.iter f key
 
   let client_ev () =
-    let (ev, _, _) = Eliom_reference.get notif_e |> Lwt_main.run in
+    let (ev, _) = Eliom_reference.get notif_e |> Lwt_main.run in
     ev
-
-  let unlisten_wrapper ~key ~handler =
-    unlisten key;
-    handler
-
-  let listen_wrapper ~key ~handler =
-    listen key;
-    handler
 
 end
