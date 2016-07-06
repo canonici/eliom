@@ -4,8 +4,9 @@ module type S = sig
   type identity
   type key
   type notification
-  val equal                      : identity -> identity -> bool
-  val get_identity               : unit -> identity
+  val equal_key                  : key -> key -> bool
+  val equal_identity             : identity -> identity -> bool
+  val get_identity               : unit -> identity Lwt.t
   val max_ressource              : int
   val max_identity_per_ressource : int
 end
@@ -20,7 +21,7 @@ module Make (A : S) = struct
 
   module Notif_hashtbl = Hashtbl.Make(struct
     type t    = A.key
-    let equal = ( = )
+    let equal = A.equal_key
     let hash  = Hashtbl.hash
   end)
 
@@ -30,7 +31,7 @@ module Make (A : S) = struct
       | None, None ->
 	true
       | Some (a, b), Some (c, d) ->
-	A.equal a c && b == d
+	A.equal_identity a c && b == d
       | _ -> false
     let hash = Hashtbl.hash
   end)
@@ -134,7 +135,7 @@ module Make (A : S) = struct
     Lwt.return ()
 
   let set_current_identity () =
-    let identity = A.get_identity () in
+    A.get_identity () >>= fun identity ->
     set_identity identity
 
   let listen (key : A.key) = Lwt.async (fun () ->

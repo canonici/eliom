@@ -3,8 +3,9 @@ module type S = sig
   type identity
   type key
   type notification
-  val equal                      : identity -> identity -> bool
-  val get_identity               : unit -> identity
+  val equal_key                  : key -> key -> bool
+  val equal_identity             : identity -> identity -> bool
+  val get_identity               : unit -> identity Lwt.t
   val max_ressource              : int
   val max_identity_per_ressource : int
 end
@@ -51,7 +52,7 @@ sig
 	      ) : unit)
            ]
   
-  *)
+  **)
 
   val client_ev : unit -> (A.key * A.notification) Eliom_react.Down.t
 
