@@ -234,8 +234,8 @@ struct
         mutable active_waiter : unit Lwt.t;
         (** [active_waiter] terminates when the page get focused *)
         mutable active_wakener : unit Lwt.u;
-        mutable restart_waiter : unit list Lwt.t;
-        mutable restart_wakener : unit list Lwt.u;
+        mutable restart_waiter : Ecb.Json_answer.a Lwt.t;
+        mutable restart_wakener : Ecb.Json_answer.a Lwt.u;
         mutable active_channels : Eliom_lib.String.Set.t;
       }
 
@@ -403,14 +403,12 @@ struct
         raise (Comet_error ("update_stateless_state on stateful one"))
 
   let call_service
-      ({ hd_activity = {focused; active; active_waiter};
-         hd_service = Ecb.Comet_service srv
-       } as hd) =
+      ({ hd_activity; hd_service = Ecb.Comet_service srv } as hd) =
     lwt () =
       Configuration.sleep_before_next_request
-        (fun () -> focused)
-        (fun () -> active = `Idle)
-        (fun () -> active_waiter)
+        (fun () -> hd_activity.focused)
+        (fun () -> hd_activity.active = `Idle)
+        (fun () -> hd_activity.active_waiter)
     in
     let request = make_request hd in
     lwt s = call_service_after_load_end srv () request in
@@ -457,11 +455,11 @@ struct
         lwt () = hd.hd_activity.active_waiter in
         aux 0
       else
-        begin
-          try_lwt
-            lwt s = Lwt.pick [call_service hd;
-                              lwt _ = hd.hd_activity.restart_waiter in
-                              assert false] in
+        Lwt.try_bind
+          (fun () ->
+             Lwt.pick [call_service hd;
+                       hd.hd_activity.restart_waiter])
+          (fun s ->
             match s with
               | Ecb.Timeout ->
                 update_activity ~timeout:true hd;
@@ -476,8 +474,9 @@ struct
               | Ecb.Stateful_messages l ->
                 let l = Array.to_list l in
                 update_stateful_state hd l;
-                Lwt.return (add_no_index l)
-          with
+                Lwt.return (add_no_index l))
+          (fun e ->
+            match e with
             | Eliom_request.Failed_request (0 | 502 | 504) ->
               if retries > max_retries
               then
@@ -492,8 +491,7 @@ struct
             | exn ->
               Eliom_lib.Lwt_log.ign_notice ~exn ~section "connection failure";
               lwt () = handle_exn ~exn () in
-              Lwt.fail exn
-        end
+              Lwt.fail exn)
     in
     update_activity hd;
     aux 0
