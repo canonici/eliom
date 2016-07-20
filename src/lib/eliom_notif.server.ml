@@ -112,17 +112,14 @@ module Make (A : S) = struct
   (* notif_e consists in a server side react event,
      its client side counterpart,
      and the server side function to trigger it. *)
-  let notif_e : notification_react Eliom_reference.eref =
-    Eliom_reference.eref_from_fun
+  let notif_e : notification_react option Eliom_reference.eref =
+    Eliom_reference.eref
       ~scope:Eliom_common.default_process_scope
-      (fun () ->
-         let e, send_e = React.E.create () in
-         let client_ev = Eliom_react.Down.of_react
-             (*VVV If we add throttling, some events may be lost
-               even if buffer size is not 1 :O *)
-             ~size: 100 (*VVV ? *)
-             ~scope:Eliom_common.default_process_scope e in
-         (client_ev, send_e))
+      None
+
+  let of_option = function
+    | Some x -> x
+    | None -> assert false
 
   let set_identity identity =
     (* For each tab connected to the app,
@@ -130,15 +127,29 @@ module Make (A : S) = struct
        because the table resourceid -> (identity, notif_ev) option
        is weak.
     *)
-    Eliom_reference.get notif_e >>= fun notif ->
-    Eliom_reference.set identity_r (Some (identity, notif)) >>= fun () ->
-    Lwt.return ()
+    Eliom_reference.get notif_e >>= fun notif_o ->
+    Eliom_reference.set identity_r (Some (identity, of_option notif_o))
+
+  let set_notif_e () =
+    let notif =
+      let e, send_e = React.E.create () in
+      let client_ev = Eliom_react.Down.of_react
+      (*VVV If we add throttling, some events may be lost
+            even if buffer size is not 1 :O *)
+	~size: 100 (*VVV ? *)
+	~scope:Eliom_common.default_process_scope
+	e
+      in
+      (client_ev, send_e)
+    in
+    Eliom_reference.set notif_e (Some notif)
 
   let set_current_identity () =
     A.get_identity () >>= fun identity ->
     set_identity identity
 
   let listen (key : A.key) = Lwt.async (fun () ->
+    set_notif_e () >>= fun () ->
     set_current_identity () >>= fun () ->
     Eliom_reference.get identity_r >>= fun identity ->
     I.add identity key;
@@ -153,8 +164,8 @@ module Make (A : S) = struct
 
   let notify ?(notforme = false) key content_gen =
     let f = fun (identity, ((_, send_e) as notif)) ->
-      Eliom_reference.get notif_e >>= fun notif_e ->
-      if notforme && notif == notif_e then
+      Eliom_reference.get notif_e >>= fun notif_o ->
+      if notforme && notif == (of_option notif_o) then
 	Lwt.return ()
       else
         content_gen identity >>= fun content -> match content with
@@ -165,8 +176,11 @@ module Make (A : S) = struct
     I.iter f key
 
   let client_ev () =
-    let (ev, _) = Eliom_reference.get notif_e |> Lwt_main.run in
-    ev
+    let (ev, _) = Lwt_main.run (
+      Eliom_reference.get notif_e >>= fun notif_o ->
+      Lwt.return (of_option notif_o)
+    )
+    in ev
 
   let _ =
     let rec clean_tbl () =
