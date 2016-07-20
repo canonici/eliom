@@ -168,4 +168,16 @@ module Make (A : S) = struct
     let (ev, _) = Eliom_reference.get notif_e |> Lwt_main.run in
     ev
 
+  let _ =
+    let rec clean_tbl () =
+      Lwt_unix.sleep 60. >>= fun _ ->
+      let f key weak_tbl = I.async_locked (fun () -> 
+	if Weak_tbl.count weak_tbl = 0
+	then Notif_hashtbl.remove I.tbl key
+      ) in
+      Notif_hashtbl.iter f I.tbl;
+      clean_tbl ()
+    in
+    clean_tbl ()
+
 end
