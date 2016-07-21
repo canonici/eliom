@@ -278,8 +278,10 @@ module Make (Html : Html) = struct
     let elt = Js.Unsafe.coerce elt in
     Lwt_js_events.async @@ fun () ->
     Lwt_js_events.submits elt @@ fun ev _ ->
+    Printf.printf "spf\n%!";
     match Eliom_service.client_fun service with
     | Some _ ->
+      Printf.printf "Some spf\n%!";
       (match read_params elt y with
        | Some v ->
          Dom.preventDefault ev;
@@ -287,6 +289,7 @@ module Make (Html : Html) = struct
        | None ->
          !error_handler ())
     | None ->
+      Printf.printf "None spf\n%!";
       Lwt.return ()
   }}
 

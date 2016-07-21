@@ -422,13 +422,15 @@ let raw_form_handler form kind cookies_info tmpl ev has_client_fun =
     | `Form_post -> !change_page_post_form_ in
   let f () =
     if has_client_fun () then
-      ()
+      (Printf.printf ("HAS CLIENT%!");
+      ())
     else
-      change_page_form ?cookies_info ?tmpl form action
+      (Printf.printf "NO CLIENT%!";
+      change_page_form ?cookies_info ?tmpl form action)
   in
   (   https = Some true  && not Eliom_request_info.ssl_)
   || (https = Some false &&     Eliom_request_info.ssl_)
-  || (f (); false)
+  || (Printf.printf "CALLING HAS_CLIENT F%!";f (); false)
 
 let raw_event_handler value =
   let handler = (*XXX???*)
