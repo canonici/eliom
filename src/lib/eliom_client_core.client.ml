@@ -431,8 +431,8 @@ let raw_form_handler form kind cookies_info tmpl ev has_client_fun =
       Printf.printf "has client fun%!"
     (*()*)
     else
-      Printf.printf "no client fun%!";
-      change_page_form ?cookies_info ?tmpl form action
+      (Printf.printf "no client fun%!";
+       change_page_form ?cookies_info ?tmpl form action)
   in
   (   https = Some true  && not Eliom_request_info.ssl_)
   || (https = Some false &&     Eliom_request_info.ssl_)
