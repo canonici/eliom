@@ -55,6 +55,8 @@ let server = {
     "eliom_parameter_base";
     "eliom_process";
     "eliom_service_base";
+    "eliom_route";
+    "eliom_route_base";
     "eliom_shared_content";
     "eliom_types_base";
     "eliommod";
@@ -62,12 +64,10 @@ let server = {
     "eliommod_cookies";
     "eliommod_datasess";
     "eliommod_gc";
-    "eliommod_naservices";
     "eliommod_pagegen";
     "eliommod_parameters";
     "eliommod_persess";
     "eliommod_sersess";
-    "eliommod_services";
     "eliommod_sessadmin";
     "eliommod_sessexpl";
     "eliommod_sessiongroups";
@@ -119,6 +119,8 @@ let client = {
     "eliom_request";
     "eliom_request_info";
     "eliom_service_base";
+    "eliom_route";
+    "eliom_route_base";
     "eliom_shared_content";
     "eliom_types_base";
     "eliommod_cookies";

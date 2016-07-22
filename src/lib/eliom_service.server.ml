@@ -40,17 +40,8 @@ let xhr_with_cookies s =
    only after calling send.  In case it is not the same name, we will
    not send the onload_form_creator_info. *)
 
-let get_or_post
-    (type m) (s : (_, _, m, _, _, _, _, _, _, _, _) t) =
-  match which_meth s with
-  | Get'    -> Ocsigen_http_frame.Http_header.GET
-  | Post'   -> Ocsigen_http_frame.Http_header.POST
-  | Put'    -> Ocsigen_http_frame.Http_header.PUT
-  | Delete' -> Ocsigen_http_frame.Http_header.DELETE
-
 let register_eliom_module name f =
   Ocsigen_loader.set_module_init_function name f
-
 
 exception Unregistered_CSRF_safe_coservice
 
@@ -108,16 +99,16 @@ let remove_service
     (service : (_, _, m, a, _, _, _, _, _, _, _) t) =
   match info service with
   | Attached attser ->
-    let key_kind = get_or_post service in
+    let key_kind = which_meth_untyped service in
     let attserget = get_name attser in
     let attserpost = post_name attser in
     let sgpt = get_params_type service in
     let sppt = post_params_type service in
-    Eliommod_services.remove_service
+    Eliom_route.remove_service
       table
       (sub_path attser)
       {Eliom_common.key_state = (attserget, attserpost);
-       Eliom_common.key_kind = key_kind}
+       Eliom_common.key_meth = key_kind}
       (if attserget = Eliom_common.SAtt_no
        || attserpost = Eliom_common.SAtt_no
        then
@@ -127,7 +118,7 @@ let remove_service
        else (0, 0))
   | Nonattached naser ->
     let na_name = na_name naser in
-    Eliommod_naservices.remove_naservice table na_name
+    Eliom_route.remove_naservice table na_name
 
 let unregister ?scope ?secure
     (type m) (service : (_, _, m, _, _, _, _, _, _, _, _) t) =

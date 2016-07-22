@@ -313,9 +313,7 @@ module type S = sig
       The first element of the pair is the content-type.  This kind of
       parameter cannot be combined with others. It is not possible to
       create a form towards a service taking such a parameter. *)
-  type raw_post_data =
-    ((string * string) * (string * string) list) option *
-    string Ocsigen_stream.t option
+  type raw_post_data
 
   val raw_post_data :
     (raw_post_data, [ `WithoutSuffix ], no_param_name) params_type
@@ -403,6 +401,14 @@ module type S = sig
     'a ->
     string list option * params
 
+  val reconstruct_params :
+    sp:Eliom_common.server_params ->
+    ('a, [< `WithSuffix | `WithoutSuffix ], 'c) params_type ->
+    (string * string) list Lwt.t option ->
+    (string * Eliom_lib.file_info) list Lwt.t option ->
+    bool ->
+    Eliom_lib.Url.path option -> 'a Lwt.t
+
   val make_params_names :
     ('a, 'b, 'c) params_type -> bool * 'c (* bool = contains a suffix *)
 
@@ -433,5 +439,7 @@ module type S = sig
     | U_yes : unit is_unit
 
   val is_unit : ('a, _, _) params_type -> 'a is_unit
+
+  val anonymise_params_type : ('a, 'b, 'c) params_type -> int
 
 end

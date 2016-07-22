@@ -370,3 +370,46 @@ let filter_na_get_params = List.filter @@ fun (s, (_ : string)) ->
   s = naservice_name
   || s = naservice_num
   || String.sub s 0 (String.length na_co_param_prefix) = na_co_param_prefix
+
+exception Eliom_404
+
+type ('a, 'b) foundornot = Found of 'a | Notfound of 'b
+
+(** Service called with wrong parameter names *)
+
+exception Eliom_Wrong_parameter
+
+exception Eliom_duplicate_registration of string
+
+exception Eliom_page_erasing of string
+
+type 'a dircontent =
+  | Vide
+  | Table of 'a direlt ref String.Table.t
+
+and 'a direlt =
+  | Dir of 'a dircontent ref
+  | File of 'a ref
+
+let empty_dircontent () = Vide
+
+type meth = [`Get | `Post | `Put | `Delete | `Other]
+
+type page_table_key = {
+  key_state : att_key_serv * att_key_serv;
+  key_meth  : meth
+}
+
+type anon_params_type = int
+
+exception Eliom_Typing_Error of (string * exn) list
+
+type ('params, 'result) service = {
+  (* unique_id, computed from parameters type.  must be the same even
+     if the actual service reference is different (after reloading the
+     site) so that it replaces the former one *)
+  s_id              : anon_params_type * anon_params_type;
+  mutable s_max_use : int option;
+  s_expire          : (float * float ref) option;
+  s_f               : bool -> 'params -> 'result Lwt.t
+}

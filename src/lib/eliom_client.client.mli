@@ -58,7 +58,8 @@ val is_client_app : unit -> bool
     the content (not the container) is reloaded.
     If the [replace] flag is set, the new page will replace the
     current page in the browser history if the service belongs to
-    the same application.
+    the same application. The last two parameters are respectively the GET and
+    POST parameters to send to the service.
 *)
 val change_page :
   ?replace:bool ->
@@ -215,6 +216,9 @@ val call_service :
 *)
 val onload : (unit -> unit) -> unit
 
+(** Returns a Lwt thread that waits until the next page is loaded. *)
+val lwt_onload : unit -> unit Lwt.t
+
 (** [onunload f] registers [f] as a handler to be called before
     changing the page the next time. If [f] returns [Some s], then we
     ask the user to confirm quitting. We try to use [s] in the
@@ -292,7 +296,33 @@ val server_function :
   ?error_handler:((string * exn) list -> 'b Lwt.t) ->
   'a Deriving_Json.t -> unit -> ('a, 'b) server_function
 
+
+(** [change_page_uri ?replace uri] identifies and calls the
+    client-side service that implements [uri].
+
+    We fallback to a server service call if the service is not
+    registered on the client.
+
+    If the [replace] flag is set to [true], the current page is not
+    saved in the history. *)
+val change_page_uri : ?replace:bool -> string -> unit Lwt.t
+
 (**/**)
+
+(** [change_page_unknown path get_params post_params] calls the
+    service corresponding to [(path, get_params, post_params)]. It may
+    throw [Eliom_common.Eliom_404] or
+    [Eliom_common.Eliom_Wrong_parameter] if there is no appropriate
+    service available. *)
+val change_page_unknown :
+  ?meth:[`Get | `Post | `Put | `Delete] ->
+  ?hostname:string ->
+  ?replace:bool ->
+  string list ->
+  (string * string) list ->
+  (string * string) list ->
+  unit Lwt.t
+
 (* Documentation rather in eliom_client.ml *)
 
 val init : unit -> unit
@@ -306,7 +336,6 @@ val reload_function : (unit -> unit -> unit Lwt.t) option ref
 *)
 val log_section : Lwt_log.section
 
-
 (** Is it a middle-click event? *)
 val middleClick : Dom_html.mouseEvent Js.t -> bool
 
@@ -315,3 +344,5 @@ val set_content_local :
   ?fragment:string -> Dom_html.element Js.t -> unit Lwt.t
 
 val do_not_set_uri : bool ref
+
+val change_page_after_action : unit -> unit Lwt.t

@@ -181,35 +181,39 @@ let register_aux pages
     begin
       match S.info service with
 	| S.Attached attser ->
-          let key_kind = S.get_or_post service in
+          let key_meth = S.which_meth_untyped service in
           let attserget = S.get_name attser in
           let attserpost = S.post_name attser in
           let suffix_with_redirect = S.redirect_suffix attser in
           let priority = S.priority attser in
-          let sgpt = S.get_params_type service in
-          let sppt = S.post_params_type service in
+          let sgpt = S.get_params_type service
+          and sppt = S.post_params_type service in
+          let s_id =
+            if
+              attserget = Eliom_common.SAtt_no
+              || attserpost = Eliom_common.SAtt_no
+            then
+              Eliom_parameter.(
+                anonymise_params_type sgpt,
+                anonymise_params_type sppt
+              )
+            else
+              (0, 0)
+          and s_max_use = S.max_use service
+          and s_expire =
+            match S.timeout service with
+            | None -> None
+            | Some t -> Some (t, ref (t +. Unix.time ()))
+          in
           let f table ((attserget, attserpost) as attsernames) =
-            Eliommod_services.add_service
+            Eliom_route.add_service
               priority
               table
               (S.sub_path attser)
               {Eliom_common.key_state = attsernames;
-               Eliom_common.key_kind = key_kind}
-              ((if attserget = Eliom_common.SAtt_no
-                || attserpost = Eliom_common.SAtt_no
-                then
-                  Eliom_parameter.(
-                    anonymise_params_type sgpt,
-                    anonymise_params_type sppt
-                  )
-                else (0, 0)),
-               ((match S.max_use service with
-                  | None -> None
-                  | Some i -> Some (ref i)),
-                (match S.timeout service with
-                 | None -> None
-                 | Some t -> Some (t, ref (t +. Unix.time ()))),
-                (fun nosuffixversion sp ->
+               Eliom_common.key_meth = (key_meth :> Eliom_common.meth)}
+              { s_id ; s_max_use ; s_expire ;
+                s_f = (fun nosuffixversion sp ->
                   Lwt.with_value Eliom_common.sp_key (Some sp)
                     (fun () ->
                       let ri = Eliom_request_info.get_ri_sp sp
@@ -293,15 +297,11 @@ let register_aux pages
                          ?code
                          ?content_type
                          ?headers
-                         content)))))
+                         content)))}
           in
-          (match (key_kind, attserget, attserpost) with
-            | (Ocsigen_http_frame.Http_header.POST, _,
-               Eliom_common.SAtt_csrf_safe (id, scope, secure_session))
-            | (Ocsigen_http_frame.Http_header.PUT, _,
-               Eliom_common.SAtt_csrf_safe (id, scope, secure_session))
-            | (Ocsigen_http_frame.Http_header.DELETE, _,
-               Eliom_common.SAtt_csrf_safe (id, scope, secure_session)) ->
+          (match (key_meth, attserget, attserpost) with
+            | (`Post | `Put | `Delete), _,
+               Eliom_common.SAtt_csrf_safe (id, scope, secure_session) ->
               let tablereg, forsession =
                 match table with
                   | Eliom_lib.Left globtbl -> globtbl, false
@@ -332,9 +332,9 @@ let register_aux pages
                   in
                   f table (attserget, attserpost);
                   n)
-            | (Ocsigen_http_frame.Http_header.GET,
-               Eliom_common.SAtt_csrf_safe (id, scope, secure_session),
-               _) ->
+            | `Get,
+              Eliom_common.SAtt_csrf_safe (id, scope, secure_session),
+              _ ->
               let tablereg, forsession =
                 match table with
                   | Left globtbl -> globtbl, false
@@ -375,7 +375,7 @@ let register_aux pages
 	| S.Nonattached naser ->
           let na_name = S.na_name naser in
           let f table na_name =
-            Eliommod_naservices.add_naservice
+            Eliom_route.add_naservice
               table
               na_name
               ((match S.max_use service with
