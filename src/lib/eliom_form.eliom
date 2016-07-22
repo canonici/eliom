@@ -290,6 +290,7 @@ module Make (Html : Html) = struct
       | None   -> false
     in
     {unit{
+      Printf.printf "spf: %b%!" %client;
        let service = %service in
        let y  = Eliom_service.post_params_type service
        and elt =

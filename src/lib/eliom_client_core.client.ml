@@ -428,8 +428,10 @@ let raw_form_handler form kind cookies_info tmpl ev has_client_fun =
     | `Form_post -> !change_page_post_form_ in
   let f () =
     if has_client_fun () then
-      ()
+      Printf.printf "has client fun%!"
+    (*()*)
     else
+      Printf.printf "no client fun%!";
       change_page_form ?cookies_info ?tmpl form action
   in
   (   https = Some true  && not Eliom_request_info.ssl_)
