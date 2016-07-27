@@ -517,7 +517,7 @@ module Unit_reg_base = struct
 
   let result_of_http_result = Result_types.cast_result
 
-  let send_appl_content = Eliom_service.XNever
+  let send_appl_content = Eliom_service.XAlways
 
   let send ?options ?charset ?(code = 204)
       ?content_type ?headers content =
@@ -995,12 +995,9 @@ module Ocaml = struct
 
 end
 
-type appl_service_options =
-    {
-      do_not_launch : bool; (** Do not launch the client side program
-                                       if it is not already launched.
-                                       Default: [false]. *)
-    }
+(** [{do_not_launch = true}]: do not launch the client side program if
+    it is not already launched.  Default: [false]. *)
+type appl_service_options = { do_not_launch : bool }
 
 let default_appl_service_options = {do_not_launch = false; }
 
