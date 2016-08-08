@@ -7,8 +7,8 @@ module type S = sig
   val equal_key                  : key -> key -> bool
   val equal_identity             : identity -> identity -> bool
   val get_identity               : unit -> identity Lwt.t
-  val max_ressource              : int
-  val max_identity_per_ressource : int
+  val max_resource               : int
+  val max_identity_per_resource  : int
 end
 
 module Make (A : S) = struct
@@ -38,7 +38,7 @@ module Make (A : S) = struct
 
   module I = struct
 
-    let tbl = Notif_hashtbl.create A.max_ressource
+    let tbl = Notif_hashtbl.create A.max_resource
       
     let lock = Lwt_mutex.create ()
 
@@ -69,7 +69,7 @@ module Make (A : S) = struct
 	try
 	  Notif_hashtbl.find tbl key
         with Not_found ->
-	  let wt = Weak_tbl.create A.max_identity_per_ressource in
+	  let wt = Weak_tbl.create A.max_identity_per_resource in
           Notif_hashtbl.add tbl key wt;
           wt
       in
@@ -176,15 +176,14 @@ module Make (A : S) = struct
     I.iter f key
 
   let client_ev () =
-    let (ev, _) = Lwt_main.run (
-      Eliom_reference.get notif_e >>= fun notif_o ->
-      Lwt.return (of_option notif_o)
-    )
-    in ev
+    Eliom_reference.get notif_e >>= fun notif_o ->
+    Lwt.return (of_option notif_o) >>= fun (ev, _) ->
+    Lwt.return ev
 
-  let _ =
+
+  let clean freq =
     let rec clean_tbl () =
-      Lwt_unix.sleep 60. >>= fun _ ->
+      Lwt_unix.sleep freq >>= fun _ ->
       let f key weak_tbl = I.async_locked (fun () -> 
 	if Weak_tbl.count weak_tbl = 0
 	then Notif_hashtbl.remove I.tbl key

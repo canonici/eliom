@@ -1,4 +1,23 @@
 
+(** Input signature of the functor [Eliom_notif.Make]
+    [identity] is the type of values used to differentiate
+    one client from another.
+    [key] is the type of values designating a given resource.
+    [notification] is the type of values to notifiy clients with.
+    [equal_key] is a function testing the equality between two values
+    of type [key].
+    [equal_identity] is the same as [equal_key] but for values of type
+    [identity].
+    [max_resource] is the initial size for the hash table storing the data of
+    clients listenning on resources, for best results it should be on the order
+    of the expected number of different resources one may want to be able to
+    listen to.
+    [max_identity_per_resource] is the initial size for the tables storing the
+    data of clients listenning on one given resource, fo best results it
+    should be on the order of the expected number of clients that may listen
+    on a given resource.
+*)
+
 module type S = sig
   type identity
   type key
@@ -6,8 +25,8 @@ module type S = sig
   val equal_key                  : key -> key -> bool
   val equal_identity             : identity -> identity -> bool
   val get_identity               : unit -> identity Lwt.t
-  val max_ressource              : int
-  val max_identity_per_ressource : int
+  val max_resource               : int
+  val max_identity_per_resource  : int
 end
 
 module Make(A : S) :
@@ -54,6 +73,12 @@ sig
   
   **)
 
-  val client_ev : unit -> (A.key * A.notification) Eliom_react.Down.t
+  val client_ev : unit -> (A.key * A.notification) Eliom_react.Down.t Lwt.t
+
+
+  (** Call [clean freq] to launch an asynchronous thread clearing the tables
+      from empty data every [freq] seconds
+  *)
+  val clean : float -> unit Lwt.t
 
 end
