@@ -180,17 +180,11 @@ module Make (A : S) = struct
     Lwt.return (of_option notif_o) >>= fun (ev, _) ->
     Lwt.return ev
 
-
-  let clean freq =
-    let rec clean_tbl () =
-      Lwt_unix.sleep freq >>= fun _ ->
-      let f key weak_tbl = I.async_locked (fun () -> 
-	if Weak_tbl.count weak_tbl = 0
-	then Notif_hashtbl.remove I.tbl key
-      ) in
-      Notif_hashtbl.iter f I.tbl;
-      clean_tbl ()
-    in
-    clean_tbl ()
+  let clean () =
+    let f key weak_tbl = I.async_locked (fun () -> 
+      if Weak_tbl.count weak_tbl = 0
+      then Notif_hashtbl.remove I.tbl key
+    ) in
+    Lwt.return @@ Notif_hashtbl.iter f I.tbl
 
 end

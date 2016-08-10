@@ -85,8 +85,7 @@ sig
 
 
   (** Call [clean freq] to launch an asynchronous thread clearing the tables
-      from empty data every [freq] seconds
-  *)
-  val clean : float -> unit Lwt.t
+      from empty data. *)
+  val clean : unit -> unit Lwt.t
 
 end
