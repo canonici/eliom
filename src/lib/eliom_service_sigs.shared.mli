@@ -19,6 +19,8 @@
 
 module type TYPES = sig
 
+  (** {2 Auxilliary types} *)
+
   type get = Get_method
   type put = Put_method
   type post = Post_method
@@ -43,14 +45,34 @@ module type TYPES = sig
     ('get, 'tipo, 'gn) Eliom_parameter.params_type
     constraint 'tipo = [< `WithSuffix | `WithoutSuffix ]
 
-  (**
-     - 0-th param : method
-     - params 1-4 : GET and POST param types
-     - param 5    : with/without suffix
-     - param 6    : method for fallback service
-     - param 7    : non-unit only for the Post (g, p) case when g != unit ;
-                    used to force unit GET parameters when needed
-  *)
+  (** {2 Method specification} *)
+
+  (** {b Method specification datatype}
+
+      An Eliom service (see {!Eliom_service_sigs.S.t}) can respond to
+      one of the following HTTP methods:
+
+      - GET ([Get g])
+      - POST ([Post (g, p)])
+      - PUT ([Put g])
+      - DELETE ([Delete g])
+
+      In all cases, the service parameters need to be provided (see
+      {!Eliom_parameter_sigs.S}). POST ([Post (g, p)]) services accept
+      both GET ([g]) and POST ([p]) parameters. For the other methods,
+      only GET ([g]) parameters apply.
+
+      The type parameters are used to impose various type constraints,
+      and are not necessarily of interest to the programmer. Their
+      technical meaning is as follows.
+
+      - 0-th param : method
+      - params 1-4 : GET and POST parameter types
+      - param 5    : suffix parameters permitted or not
+      - param 6    : method for fallback service
+      - param 7    : non-unit only for the [Post (g, p)] case when [g] is
+                     not unit ; used to force unit GET parameters when
+                     needed *)
   type (_, _, _, _, _, _, _, _) meth =
 
     | Get : ('gp, 'tipo, 'gn) params ->
@@ -70,8 +92,8 @@ module type TYPES = sig
 
       (delete, 'gp, 'gn, unit, unit, 'tipo, delete, unit) meth
 
-  (** Like [meth] but without the auxilliary parameters; used to query
-      about the service method from outside. *)
+  (** Like {!meth} but without the auxilliary parameters; used to
+      query about the service method from outside. *)
   type _ which_meth =
     | Get'    : get which_meth
     | Post'   : post which_meth
@@ -82,7 +104,13 @@ end
 
 module type S = sig
 
+  (** {2 Service creation} *)
+
+  (** See {!create} for the main service creation function. *)
+
   include TYPES
+
+  (** {3 Auxilliary types} *)
 
   type att
   type non_att
@@ -91,7 +119,8 @@ module type S = sig
     | Attached : att -> att attached_info
     | Nonattached : non_att -> non_att attached_info
 
-  (** Type of services.
+  (** {b Type of services}
+
       - ['get] is the type of GET parameters expected by the service.
       - ['post] is the type of POST parameters expected by the service.
       - ['meth] the HTTP method
@@ -103,16 +132,32 @@ module type S = sig
         of parameters it uses: suffix or not.
       - ['gn] is the type of GET parameters names. See
         {!Eliom_parameter.param_name} and form generation functions
-        (e. g. {!Eliom_content.Html5.D.get_form}).
+        (e. g. {!Eliom_content.Html.D.get_form} ).
       - ['pn] is the type of POST parameters names. See
         {!Eliom_parameter.param_name} and form generation functions
-        (e. g. {!Eliom_content.Html5.D.post_form}).
+        (e. g. {!Eliom_content.Html.D.post_form} ).
       - [ 'ret] is an information on what the service returns.  See
         {!Eliom_registration.kind}. *)
   type ('get, 'post, 'meth, 'attached, 'co, 'ext, 'reg,
         +'tipo, 'gn, 'pn, +'ret) t
     constraint 'tipo = [< `WithSuffix | `WithoutSuffix ]
 
+  (** {b Service identifier}
+
+      In the simplest case, a service can be identified via its path
+      ([Path path]).
+
+      For the constructors [Fallback] and [Global], the service
+      doesn't have its own URL. It either shares the URL of another
+      [service] ([Fallback service]), or it can be called on any URL
+      ([Global]). Both for [Fallback service] and for [Global], we
+      internally use an automatically-generated parameter for
+      distinguishing the service from the other services sharing the
+      URL.
+
+      [External server path] allows defining services handled by
+      external servers. These servers do not have to run
+      Ocsigen/Eliom. *)
   type (_, _, _, _, _, _, _) id =
     | Path :
         Eliom_lib.Url.path
@@ -127,40 +172,71 @@ module type S = sig
         string * Eliom_lib.Url.path
       -> (att, non_co, ext, non_reg, _, _, _) id
 
-  (** {2 Definitions of services}
+  (** {b Service definition}
 
-      {e Warning: These functions must be called when the site
-      information is available, that is, either during a request or
-      during the initialisation phase of the site.  Otherwise, it will
-      raise the exception
-      {!Eliom_common.Eliom_site_information_not_available}.  If you
-      are using static linking, you must delay the call to this
-      function until the configuration file is read, using
-      {!Eliom_service.register_eliom_module}. Otherwise you will also
-      get this exception.}  *)
+      The function [create ~id ~meth ()] creates a service ({!t})
+      identified as per [id] (see {!id} ) and accepting parameters as
+      per [meth] (see {!Eliom_service_sigs.TYPES.meth} ).
 
-  (** The function [create ~id ~meth ~ret ()] creates a {!service}
-      identified as per [id] and accepting parameters as per [m]. The
-      parameter [~ret] is used to constrain the type parameter ['ret] of
-      the service.
+      In addition to [~id] and [~meth], [create] accepts a series of
+      optional arguments described below.
 
-      If the optional parameter [~https:true] is given, all links
-      towards that service will use https. By default, links will keep
-      the current protocol.
+      If [~https:true] is provided, all links towards that service
+      will use HTTPS. By default, links will keep the current
+      protocol.
 
-      The optional parameter [~priority] allows one to change the
-      priority order between service that shares the same path. The
-      default priority is 0 ; if you want the service to be tried
+      The optional argument [~priority] allows one to change the
+      priority order between services that share the same path. The
+      default priority is 0. If you want the service to be tried
       before (resp. after) other services, put a higher (resp. lower)
       priority.
 
-      If the optional parameter [~keep_nl_params:`Persistent]
+      The remaining arguments are ignored for services identified by a
+      path (constructor [Path]). We describe their meaning in
+      conjunction with [Fallback] and [Global].
+
+      The optional [~timeout] argument specifies a timeout (in
+      seconds) after which the coservice will disappear. This amount
+      of time is computed from the creation or from the last call to
+      the service. The default is "no timeout". The optional
+      [~max_use] argument specifies that the service can be used only
+      a fixed number of times. The default is "no limitation".
+
+      If the optional argument [~keep_nl_params:`Persistent]
       (resp. [~keep_nl_params:`All]) is given, all links towards that
       service will keep persistent (resp. all) non localized GET
-      parameters of the current service. The default is [`None]. See
+      arguments of the current service. The default is [`None]. See
       the eliom manual for more information about {% <<a_manual
       chapter="params" fragment="nonlocalizedparameters"|non localized
-      parameters>>%}.  *)
+      ptimarameters>>%}.
+
+      The optional [~name] argument provides a name for the service;
+      otherwise, it will be anonymous (with an auto-generated internal
+      name).
+
+      If the optional [~csrf_safe] argument is [true], it will create
+      a {% <<a_manual chapter="security" fragment="csrf"|"CSRF-safe"
+      service>>%}. In that case the [~name] argument is ignored. The
+      default is [false].
+
+      The [~csrf_scope] and [~csrf_secure], if present, should
+      respectively correspond to the [~scope] and [~secure] arguments
+      that will be given to the associated [register]
+      function. Otherwise the registration will fail with
+      {Eliom_service.Wrong_session_table_for_CSRF_safe_coservice}. See
+      {!Eliom_registration.Html.register},
+      {!Eliom_registration.App.register} or any other
+      {!Eliom_registration}[.*.register] functions for a description
+      of these arguments.
+
+      {e Warning: [create] must be called when the site information is
+      available, that is, either during a request or during the
+      initialisation phase of the site.  Otherwise, it will raise the
+      exception {!Eliom_common.Eliom_site_information_not_available}.
+      If you are using static linking, you must delay the call to this
+      function until the configuration file is read, using
+      {!Eliom_service.register_eliom_module}. Otherwise you will also
+      get this exception.}  *)
   val create :
     ?name:string ->
     ?csrf_safe: bool ->
@@ -176,9 +252,9 @@ module type S = sig
     unit ->
     ('gp, 'pp, 'm, 'att, 'co, 'ext, 'reg, 'tipo, 'gn, 'pn, non_ocaml) t
 
-  (** {2 Predefined services} *)
+  (** {3 Predefined services} *)
 
-  (** {3 Reload actions} *)
+  (** {4 Reload actions} *)
 
   (** The service [reload_action] is a predefined non-attached action
       with special behaviour: it has no parameter at all, even
@@ -249,7 +325,7 @@ module type S = sig
      [ `One of string list ] Eliom_parameter.param_name *'an,
      unit, non_ocaml) t
 
-  (** {2 Miscellaneous} *)
+  (** {3 Miscellaneous} *)
 
   (** The function [preapply ~service paramaters] creates a new
       service by preapplying [service] to the GET [parameters]. It is

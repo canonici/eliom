@@ -44,6 +44,7 @@ let update_session_info
     ?all_get_params
     ?na_get_params
     ?nl_get_params
+    ?nl_post_params
     ?all_post_params
     ?all_get_but_nl
     ?all_get_but_na_nl
@@ -61,6 +62,8 @@ let update_session_info
       f ~default:si.Eliom_common.si_na_get_params na_get_params;
     si_nl_get_params =
       f ~default:si.Eliom_common.si_nl_get_params nl_get_params;
+    si_nl_post_params =
+      f ~default:si.Eliom_common.si_nl_post_params nl_post_params;
     si_all_post_params =
       f ~default:si.Eliom_common.si_all_post_params all_post_params;
     si_all_get_but_nl =
@@ -76,12 +79,12 @@ let remove_first_slash path =
   | l -> l
 
 let path_re =
-  jsnew Js.regExp (Js.bytestring "^/?([^\\?]*)(\\?.*)?$")
+  new%js Js.regExp (Js.bytestring "^/?([^\\?]*)(\\?.*)?$")
 
 let current_path_ = ref (remove_first_slash Url.Current.path)
 let set_current_path path =
   let path =
-    Js.Opt.case (path_re##exec (Js.string path))
+    Js.Opt.case (path_re##(exec (Js.string path)))
       (fun () -> [])
       (fun handle ->
 	let res = Js.match_result handle in
@@ -244,7 +247,7 @@ let default_request_data =
   }
 
 let get_request_data () =
-  let eliom_request_data = Js.Unsafe.global##___eliom_request_data_ in
+  let eliom_request_data = Js.Unsafe.global##.___eliom_request_data_ in
   Js.Optdef.case eliom_request_data
     (fun () -> default_request_data)
     (fun var -> Eliom_unwrap.unwrap_js var)

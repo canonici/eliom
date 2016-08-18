@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 *)
 
-{client{
+[%%client.start]
 
 let read_params form y =
   Eliom_parameter.reconstruct_params_form
@@ -33,11 +33,11 @@ let set_error_handler f = error_handler := f
 
 let iter_contents y ev f =
   let fls () = Lwt.return false in
-  Js.Opt.case (ev##target) fls @@ fun target ->
+  Js.Opt.case (ev##.target) fls @@ fun target ->
   Js.Opt.case (Dom_html.CoerceTo.form target) fls @@ fun target ->
   match read_params target y with
   | Some v ->
-    lwt () = f v in Lwt.return true
+    let%lwt () = f v in Lwt.return true
   | None ->
     !error_handler ()
 
@@ -59,11 +59,12 @@ let make_hdlr_post service g : client_form_handler = fun ev ->
     iter_contents (Eliom_service.post_params_type service) ev @@ fun p ->
     Eliom_client.change_page ~service g p
 
-}}
+[%%server type client_form_handler ]
 
-type client_form_handler
+[%%shared.start]
 
-{shared{
+let x = 0
+
 module type Html = sig
 
   include Html_sigs.T
@@ -132,29 +133,27 @@ module Make_links (Html : Html) = struct
           ?fragment ?keep_nl_params ?nl_params getparams
       in
       let href = Html.a_href href in
-      match get_xhr xhr(* , Eliom_service.get_client_fun_ service  *)with
-      | true(* , _ *)
-      (* | _, Some _ *) ->
-        let f = {{ fun ev ->
+      if get_xhr xhr then
+        let f = [%client fun ev ->
           if not (Eliom_client.middleClick ev) then begin
             Dom.preventDefault ev;
             Dom_html.stopPropagation ev;
             Lwt.async @@ fun () ->
             Eliom_client.change_page
-              ?absolute:%absolute
-              ?absolute_path:%absolute_path
-              ?https:%https
-              ~service:%service
-              ?hostname:%hostname
-              ?port:%port
-              ?fragment:%fragment
-              ?keep_nl_params:%keep_nl_params
-              ?nl_params:%nl_params
-              %getparams ()
-          end }}
+              ?absolute:~%absolute
+              ?absolute_path:~%absolute_path
+              ?https:~%https
+              ~service:~%service
+              ?hostname:~%hostname
+              ?port:~%port
+              ?fragment:~%fragment
+              ?keep_nl_params:~%keep_nl_params
+              ?nl_params:~%nl_params
+              ~%getparams ()
+          end ]
         in
         Html.a_onclick f :: href :: a
-      | _ ->
+      else
         href :: a
     in
     Html.a ~a content
@@ -599,7 +598,9 @@ module Make (Html : Html) = struct
     let a =
       let a = (a :> Html_types.form_attrib attrib list) in
       if get_xhr xhr then
-        let hdlr = {client_form_handler{ make_hdlr_get %service }} in
+        let hdlr = [%client
+          (make_hdlr_get ~%service : client_form_handler)
+        ] in
         let info = make_info ~https `Form_get service hdlr in
         a_onsubmit_service info :: a
       else
@@ -617,7 +618,9 @@ module Make (Html : Html) = struct
     let a =
       let a = (a :> Html_types.form_attrib attrib list) in
       if get_xhr xhr then
-        let hdlr = {client_form_handler{ make_hdlr_get %service }} in
+        let hdlr = [%client
+          (make_hdlr_get ~%service : client_form_handler)
+        ] in
         let info = make_info ~https `Form_get service hdlr in
         a_onsubmit_service info :: a
       else
@@ -635,9 +638,9 @@ module Make (Html : Html) = struct
     let a =
       let a = (a :> Html_types.form_attrib attrib list) in
       if get_xhr xhr then
-        let hdlr =
-          {client_form_handler{ make_hdlr_post %service %getparams }}
-        in
+        let hdlr = [%client
+          (make_hdlr_post ~%service ~%getparams : client_form_handler)
+        ] in
         let info = make_info ~https `Form_post service hdlr in
         a_onsubmit_service info :: a
       else
@@ -656,9 +659,9 @@ module Make (Html : Html) = struct
     let a =
       let a = (a :> Html_types.form_attrib attrib list) in
       if get_xhr xhr then
-        let hdlr = {client_form_handler{
-          make_hdlr_post %service %getparams
-        }} in
+        let hdlr = [%client
+          (make_hdlr_post ~%service ~%getparams : client_form_handler)
+        ] in
         let info = make_info ~https `Form_post service hdlr in
         a_onsubmit_service info :: a
       else
@@ -670,4 +673,3 @@ module Make (Html : Html) = struct
       contents getparams
 
 end
-}}
