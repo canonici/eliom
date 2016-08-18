@@ -1,6 +1,6 @@
 open Ocsigen_cookies
 
-type cookie = Ocsigen_cookies.cookie =
+type cookie =
   | OSet of float option (* exp date *) * string (* value *) * bool (* secure *)
   | OUnset
 [@@deriving json]
