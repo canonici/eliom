@@ -910,7 +910,7 @@ let eliom_params_after_action = Polytables.make_key ()
 (* After an action, we get tab_cookies info from rc: *)
 let tab_cookie_action_info_key = Polytables.make_key ()
 
-type cpi =  {
+type cpi = client_process_info =  {
   cpi_ssl : bool;
   cpi_hostname : string;
   cpi_server_port : int;
